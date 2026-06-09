@@ -15,9 +15,9 @@
 #endif
 
 #include <cr_section_macros.h>
+#include <stdio.h>
 #include <lpc17xx_adc.h>
 #include <lpc17xx_gpio.h>
-#include <stdio.h>
 
 volatile uint16_t buffer[2];
 
@@ -25,43 +25,34 @@ void cfgADC(void);
 void ADC_IRQHandler();
 
 int main(void) {
-  cfgADC();
-  GPIO_SetDir(PORT_0, (1 << 22), GPIO_OUTPUT);
-  GPIO_SetDir(PORT_3, (1 << 26), GPIO_OUTPUT);
-
-  while (1) {
-    if (buffer[0] > 2048) {
-      GPIO_SetPinState(PORT_0, PIN_22, RESET);
-    } else {
-      GPIO_SetPinState(PORT_0, PIN_22, SET);
-    }
-    if (buffer[1] > 2048) {
-      GPIO_SetPinState(PORT_3, PIN_26, RESET);
-    } else {
-      GPIO_SetPinState(PORT_3, PIN_26, SET);
-    }
-  }
+	GPIO_SetDir(PORT_0, (1<<22), GPIO_OUTPUT);
+	GPIO_SetDir(PORT_3, (1<<26), GPIO_OUTPUT);
+	cfgADC();
+	while(1){
+		buffer[0]= ADC_ChannelGetData(ADC_CHANNEL_0);
+		buffer[1]= ADC_ChannelGetData(ADC_CHANNEL_1);
+		if(buffer[0]>3900){
+			GPIO_ClearPins(PORT_0, (1<<22));
+		}else if(buffer[0]<300){
+			GPIO_SetPins(PORT_0,(1<<22));
+		}
+		if(buffer[1]>3900){
+			GPIO_SetPinState(PORT_3, PIN_26, RESET);
+		}else if(buffer[1]< 300){
+			GPIO_SetPinState(PORT_3, PIN_26, SET);
+		}
+	}
 }
+void cfgADC(void){
+	ADC_Init(1000);
+	ADC_PowerUp();
 
-void cfgADC(void) {
-  ADC_Init(40000);
-  ADC_PinConfig(ADC_CHANNEL_0);
-  // ADC_PinConfig(ADC_CHANNEL_1);
+	ADC_BurstEnable();
+	ADC_PinConfig(ADC_CHANNEL_0);
+	ADC_PinConfig(ADC_CHANNEL_1);
 
-  ADC_ChannelEnable(ADC_CHANNEL_0);
-  // ADC_ChannelEnable(ADC_CHANNEL_1);
+	ADC_ChannelEnable(ADC_CHANNEL_0);
+	ADC_ChannelEnable(ADC_CHANNEL_1);
 
-  ADC_BurstEnable();
-
-  ADC_IntEnable(ADC_INT_CH0);
-  // ADC_IntEnable(ADC_INT_CH1);
-
-  NVIC_EnableIRQ(ADC_IRQn);
-
-  ADC_StartCmd(ADC_START_CONTINUOUS);
-  ADC_PowerUp();
-}
-void ADC_IRQHandler() {
-  buffer[0] = ADC_ChannelGetData(ADC_CHANNEL_0);
-  buffer[1] = ADC_ChannelGetData(ADC_CHANNEL_1);
+	ADC_StartCmd(ADC_START_CONTINUOUS);
 }
