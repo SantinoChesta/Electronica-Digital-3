@@ -19,11 +19,17 @@
 #define DEADZONE 400
 #define ADC_BUFFER_SIZE 16
 
+typedef enum
+{
+    ABAJO = 0x5E,
+    DERECHA = 0x50,
+    IZQUIERDA = 0x38,
+    ARRIBA = 0x3E,
+    CENTRO = 0x3F
+} DIR;
 
-
-typedef enum { ABAJO = 0x5E, DERECHA = 0x50, IZQUIERDA = 0x38, ARRIBA = 0x3E, CENTRO = 0x3F } DIR;
-
-typedef struct {
+typedef struct
+{
     DIR xDir;
     uint16_t xValue;
     DIR yDir;
@@ -33,9 +39,7 @@ typedef struct {
 volatile uint16_t xValue = CENTER;
 volatile uint16_t yValue = CENTER;
 
-
-
-
+// asd
 
 void cfgADC(void);
 void cfgDisplay(void);
@@ -52,24 +56,20 @@ int main(void)
 
     while (1)
     {
-    	 xValue = (LPC_ADC->ADDR0 >> 4) & 0xFFF;
-    	 yValue = (LPC_ADC->ADDR1 >> 4) & 0xFFF;
-        AXIS axis =
-        {
-            .xDir = getXDir(xValue),
-            .xValue = xValue,
-            .yDir = getYDir(yValue),
-            .yValue = yValue
-        };
+        xValue = (LPC_ADC->ADDR0 >> 4) & 0xFFF;
+        yValue = (LPC_ADC->ADDR1 >> 4) & 0xFFF;
+        AXIS axis = {
+            .xDir = getXDir(xValue), .xValue = xValue, .yDir = getYDir(yValue), .yValue = yValue};
 
         displayWrite(getAxialDir(&axis));
     }
 }
 
-void cfgADC() {
-	ADC_Init(10000);
-	ADC_PowerUp();
-	ADC_BurstEnable();
+void cfgADC()
+{
+    ADC_Init(10000);
+    ADC_PowerUp();
+    ADC_BurstEnable();
 
     ADC_PinConfig(ADC_CHANNEL_0);
     ADC_PinConfig(ADC_CHANNEL_1);
@@ -80,64 +80,80 @@ void cfgADC() {
     ADC_StartCmd(ADC_START_CONTINUOUS);
 }
 
-void cfgDisplay(void) {
-	GPIO_SetDir(PORT_0, (1<<22), GPIO_OUTPUT);
-	GPIO_SetDir(PORT_3, (1<<26), GPIO_OUTPUT);
+void cfgDisplay(void)
+{
+    GPIO_SetDir(PORT_0, (1 << 22), GPIO_OUTPUT);
+    GPIO_SetDir(PORT_3, (1 << 26), GPIO_OUTPUT);
 }
 
-void displayWrite(DIR displayDir) {
+void displayWrite(DIR displayDir)
+{
 
     // Clear segments
-	switch(displayDir){
-	case ABAJO:
-		GPIO_SetPins(PORT_0, (1<<22));
-		GPIO_SetPins(PORT_3, (1<<26));
-		break;
-	case ARRIBA:
-		GPIO_ClearPins(PORT_0, (1<<22));
-		GPIO_ClearPins(PORT_3, (1<<26));
-		break;
-	case DERECHA:
-		GPIO_SetPins(PORT_0, (1<<22));
-		GPIO_ClearPins(PORT_3, (1<<26));
-		break;
-	case IZQUIERDA:
-		GPIO_ClearPins(PORT_0, (1<<22));
-		GPIO_SetPins(PORT_3, (1<<26));
-		break;
-	case CENTRO:
-		GPIO_SetPins(PORT_0, (1<<22));
-		GPIO_SetPins(PORT_3, (1<<26));
-		break;
-	}
+    switch (displayDir)
+    {
+    case ABAJO:
+        GPIO_SetPins(PORT_0, (1 << 22));
+        GPIO_SetPins(PORT_3, (1 << 26));
+        break;
+    case ARRIBA:
+        GPIO_ClearPins(PORT_0, (1 << 22));
+        GPIO_ClearPins(PORT_3, (1 << 26));
+        break;
+    case DERECHA:
+        GPIO_SetPins(PORT_0, (1 << 22));
+        GPIO_ClearPins(PORT_3, (1 << 26));
+        break;
+    case IZQUIERDA:
+        GPIO_ClearPins(PORT_0, (1 << 22));
+        GPIO_SetPins(PORT_3, (1 << 26));
+        break;
+    case CENTRO:
+        GPIO_SetPins(PORT_0, (1 << 22));
+        GPIO_SetPins(PORT_3, (1 << 26));
+        break;
+    }
 }
 
-DIR getXDir(int x) {
-    if ((x) > (CENTER + DEADZONE)) {
+DIR getXDir(int x)
+{
+    if ((x) > (CENTER + DEADZONE))
+    {
         return DERECHA;
-    } else if ((x)  < (CENTER - DEADZONE)) {
+    }
+    else if ((x) < (CENTER - DEADZONE))
+    {
         return IZQUIERDA;
-    } else
+    }
+    else
         return CENTRO;
 }
-DIR getYDir(int y) {
-    if ((y) > (CENTER + DEADZONE)) {
+DIR getYDir(int y)
+{
+    if ((y) > (CENTER + DEADZONE))
+    {
         return ABAJO;
-    } else if ((y) < (CENTER - DEADZONE)) {
+    }
+    else if ((y) < (CENTER - DEADZONE))
+    {
         return ARRIBA;
-    } else
+    }
+    else
         return CENTRO;
 }
-DIR getAxialDir(AXIS *axis) {
+DIR getAxialDir(AXIS *axis)
+{
 
     uint32_t dx = abs((int)axis->xValue - CENTER);
     uint32_t dy = abs((int)axis->yValue - CENTER);
 
-    if (dx < DEADZONE && dy < DEADZONE) {
+    if (dx < DEADZONE && dy < DEADZONE)
+    {
         return CENTRO;
     }
 
-    if (dx > dy) {
+    if (dx > dy)
+    {
         return axis->xDir;
     }
 
