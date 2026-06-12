@@ -1,5 +1,7 @@
 #!/bin/sh
 
+echo "PRE-COMMIT RUNNING"
+
 files=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.(c|cpp|h|hpp)$')
 
 for file in $files
