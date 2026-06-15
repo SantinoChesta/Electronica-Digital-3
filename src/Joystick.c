@@ -1,68 +1,80 @@
 #include "Joystick.h"
 
-void cfgADC()
+#include <stdlib.h>
+#include <lpc17xx_adc.h>
+
+void Joystick_Init(void)
 {
     ADC_Init(10000);
     ADC_PowerUp();
-    ADC_BurstEnable();
 
     ADC_PinConfig(ADC_CHANNEL_0);
     ADC_PinConfig(ADC_CHANNEL_1);
 
-    ADC_IntEnable(ADC_INT_CH0); // Int habilitadas en registros pero no
-    ADC_IntEnable(ADC_INT_CH1); // en NVIC habilita las req de DMA
+    ADC_ChannelEnable(ADC_CHANNEL_0);
+    ADC_ChannelEnable(ADC_CHANNEL_1);
 
+    ADC_BurstEnable();
     ADC_StartCmd(ADC_START_CONTINUOUS);
 }
-DIR getXDir(int x)
+
+uint16_t Joystick_GetX(void)
 {
-    if ((x) > (CENTER + DEADZONE))
+    return ADC_ChannelGetData(ADC_CHANNEL_0);
+}
+
+uint16_t Joystick_GetY(void)
+{
+    return ADC_ChannelGetData(ADC_CHANNEL_1);
+}
+
+DIR Joystick_GetXDir(uint16_t x)
+{
+    if (x > JOY_CENTER + JOY_DEADZONE)
     {
         return DERECHA;
     }
-    else if ((x) < (CENTER - DEADZONE))
+
+    if (x < JOY_CENTER - JOY_DEADZONE)
     {
         return IZQUIERDA;
     }
-    else
-        return CENTRO;
+
+    return CENTRO;
 }
-DIR getYDir(int y)
+
+DIR Joystick_GetYDir(uint16_t y)
 {
-    if ((y) > (CENTER + DEADZONE))
+    if (y > JOY_CENTER + JOY_DEADZONE)
     {
         return ABAJO;
     }
-    else if ((y) < (CENTER - DEADZONE))
+
+    if (y < JOY_CENTER - JOY_DEADZONE)
     {
         return ARRIBA;
     }
-    else
-        return CENTRO;
+
+    return CENTRO;
 }
-DIR getAxialDir(AXIS *axis)
+
+DIR Joystick_GetDirection(void)
 {
+    uint16_t x = Joystick_GetX();
+    uint16_t y = Joystick_GetY();
 
-    uint32_t dx = abs((int)axis->xValue - CENTER);
-    uint32_t dy = abs((int)axis->yValue - CENTER);
+    uint32_t dx = abs((int)x - JOY_CENTER);
+    uint32_t dy = abs((int)y - JOY_CENTER);
 
-    if (dx < DEADZONE && dy < DEADZONE)
+    if (dx < JOY_DEADZONE && dy < JOY_DEADZONE)
     {
         return CENTRO;
     }
 
     if (dx > dy)
     {
-        return axis->xDir;
+        return Joystick_GetXDir(x);
     }
 
-    return axis->yDir;
-}
-uint16_t getADCXValue()
-{
-    return (LPC_ADC->ADDR0 >> 4) & 0xFFF;
-}
-uint16_t getADCYValue()
-{
-    return (LPC_ADC->ADDR1 >> 4) & 0xFFF;
+    return Joystick_GetYDir(y);
 }

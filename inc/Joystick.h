@@ -8,12 +8,10 @@
 #ifndef JOYSTICK_H_
 #define JOYSTICK_H_
 
-#include <lpc17xx_adc.h>
-#include <stdlib.h>
+#include <stdint.h>
 
-#define CENTER 2048
-#define DEADZONE 400
-#define ADC_BUFFER_SIZE 16
+#define JOY_CENTER 2048
+#define JOY_DEADZONE 400
 
 typedef enum
 {
@@ -24,19 +22,11 @@ typedef enum
     CENTRO
 } DIR;
 
-typedef struct
-{
-    DIR xDir;
-    uint16_t xValue;
-    DIR yDir;
-    uint16_t yValue;
-} AXIS;
+void Joystick_Init(void);
+uint16_t Joystick_GetX(void);
+uint16_t Joystick_GetY(void);
+DIR Joystick_GetXDir(uint16_t x);
+DIR Joystick_GetYDir(uint16_t y);
+DIR Joystick_GetDirection(void);
 
-void cfgADC(void);
-uint16_t getADCXValue();
-uint16_t getADCYValue();
-DIR getXDir(int x);
-DIR getYDir(int y);
-DIR getAxialDir(AXIS *axis);
-
-#endif /* JOYSTICK_H_ */
+#endif

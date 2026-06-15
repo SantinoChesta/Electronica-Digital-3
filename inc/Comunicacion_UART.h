@@ -8,12 +8,11 @@
 #ifndef COMUNICACION_UART_H_
 #define COMUNICACION_UART_H_
 
-#include "lpc17xx_uart.h"
-#include "lpc17xx_gpdma.h"
-#include "Mapa.h"
+#include <stdint.h>
+#include <lpc17xx_gpdma.h>
 
-void UART_DMA_Send(void);
+void UART0_DMA_Init(void);
+Status UART0_DMA_Send(const uint8_t *buffer, uint32_t length);
+uint8_t UART0_DMA_IsBusy(void);
 
-void cfgUART0(void);
-
-#endif /* COMUNICACION_UART_H_ */
+#endif

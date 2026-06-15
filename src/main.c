@@ -14,60 +14,27 @@
 #include "LPC17xx.h"
 #endif
 
-#include "Fotograma.h"
+#include "Joystick.h"
+#include "Snake.h"
+#include "Comunicacion_UART.h"
+#include "Teclado_matricial.h"
 
-void cfgTIMER0(void)
-{
-    TIM_TIMERCFG_T timerCfg;
-    TIM_MATCHCFG_T matchCfg;
-
-    timerCfg.prescaleOpt = TIM_US;
-    timerCfg.prescaleValue = 1;
-
-    TIM_InitTimer(LPC_TIM0, &timerCfg);
-
-    matchCfg.channel = 0;
-    matchCfg.intEn = ENABLE;
-    matchCfg.resetEn = ENABLE;
-    matchCfg.stopEn = DISABLE;
-    matchCfg.extOpt = TIM_NOTHING;
-    matchCfg.matchValue = 250000; // 250 ms
-
-    TIM_ConfigMatch(LPC_TIM0, &matchCfg);
-
-    NVIC_EnableIRQ(TIMER0_IRQn);
-
-    TIM_Enable(LPC_TIM0);
-}
-void TIMER0_IRQHandler(void)
-{
-    TIM_ClearIntPending(LPC_TIM0, TIM_MR0_INT);
-
-    if (gameOver)
-        return;
-
-    uint16_t xADC = getADCXValue();
-    uint16_t yADC = getADCYValue();
-
-    AXIS axis = {.xDir = getXDir(xADC), .xValue = xADC, .yDir = getYDir(yADC), .yValue = yADC};
-
-    DIR nuevaDir = getAxialDir(&axis);
-
-    if (nuevaDir != CENTRO)
-    {
-        if (!(direccionActual == ARRIBA && nuevaDir == ABAJO) &&
-            !(direccionActual == ABAJO && nuevaDir == ARRIBA) &&
-            !(direccionActual == DERECHA && nuevaDir == IZQUIERDA) &&
-            !(direccionActual == IZQUIERDA && nuevaDir == DERECHA))
-        {
-            direccionActual = nuevaDir;
-        }
-    }
-
-    ActualizarSnake(direccionActual);
-}
 int main(void)
 {
+	cfgGPIO();
 
-    return 0;
+	while (TeclaSupIzq() == 0)
+	{
+	}
+
+    Joystick_Init();
+    UART0_DMA_Init();
+
+    Snake_Init();
+    Snake_Timer0Init();
+
+    while (1)
+    {
+        __WFI();
+    }
 }

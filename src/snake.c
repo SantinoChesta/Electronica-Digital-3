@@ -1,22 +1,62 @@
-/*
- * Mapa.c
- *
- *  Created on: 12 jun. 2026
- *      Author: santi
- */
-#include "Mapa.h"
+#include "Snake.h"
+#include "Comunicacion_UART.h"
+
+#include <lpc17xx_timer.h>
+
 POS snake[MAX_SNAKE];
- POS fruta;
+POS fruta;
 
- uint8_t longitud = 3;
- uint8_t gameOver = 0;
+uint8_t longitud = 3;
+uint8_t gameOver = 0;
+DIR direccionActual = DERECHA;
 
- DIR direccionActual = DERECHA;
+static uint32_t seed = 1;
+static uint8_t frameBuffer[FRAME_BUFFER_SIZE];
 
- uint32_t seed = 1;
- uint16_t frameLength = 0;
+static uint8_t EsDireccionOpuesta(DIR actual, DIR nueva)
+{
+    return (actual == ARRIBA && nueva == ABAJO) ||
+           (actual == ABAJO && nueva == ARRIBA) ||
+           (actual == DERECHA && nueva == IZQUIERDA) ||
+           (actual == IZQUIERDA && nueva == DERECHA);
+}
 
- char frameBuffer[FRAME_SIZE];
+static uint8_t PosIgual(POS a, POS b)
+{
+    return a.x == b.x && a.y == b.y;
+}
+
+static void GenerarFruta(void)
+{
+    uint8_t libre;
+
+    if (longitud >= MAX_SNAKE)
+    {
+        gameOver = 1;
+        return;
+    }
+
+    do
+    {
+        libre = 1;
+
+        seed = seed * 1103515245u + 12345u;
+        fruta.x = (seed >> 16) % MAPA_X;
+
+        seed = seed * 1103515245u + 12345u;
+        fruta.y = (seed >> 16) % MAPA_Y;
+
+        for (uint8_t i = 0; i < longitud; i++)
+        {
+            if (snake[i].x == fruta.x && snake[i].y == fruta.y)
+            {
+                libre = 0;
+                break;
+            }
+        }
+
+    } while (!libre);
+}
 
 void Snake_Init(void)
 {
@@ -30,42 +70,40 @@ void Snake_Init(void)
     snake[2].y = 5;
 
     longitud = 3;
+    gameOver = 0;
+    direccionActual = DERECHA;
 
-    fruta.x = 8;
-    fruta.y = 8;
+    GenerarFruta();
 }
-void GenerarFruta(void)
+
+static void Snake_CambiarDireccion(DIR nuevaDir)
 {
-    uint8_t libre;
-    uint8_t i;
+    if (nuevaDir == CENTRO)
+    {
+        return;
+    }
 
-    do{
-        libre = 1;
+    if (EsDireccionOpuesta(direccionActual, nuevaDir))
+    {
+        return;
+    }
 
-        fruta.x = seed % MAPA_X;
-        fruta.y = (seed / 7) % MAPA_Y;
-
-        seed += 13;
-
-        for(i=0;i<longitud;i++)
-        {
-            if(snake[i].x == fruta.x &&
-               snake[i].y == fruta.y)
-            {
-                libre = 0;
-                break;
-            }
-        }
-
-    }while(!libre);
+    direccionActual = nuevaDir;
 }
-void ActualizarSnake(DIR dir)
+
+void Snake_Update(void)
 {
-    POS nuevaCabeza;
+    if (gameOver)
+    {
+        return;
+    }
 
-    nuevaCabeza = snake[0];
+    DIR nuevaDir = Joystick_GetDirection();
+    Snake_CambiarDireccion(nuevaDir);
 
-    switch (dir)
+    POS nuevaCabeza = snake[0];
+
+    switch (direccionActual)
     {
     case ARRIBA:
         nuevaCabeza.y--;
@@ -93,76 +131,160 @@ void ActualizarSnake(DIR dir)
         return;
     }
 
-    for (uint8_t i = 0; i < longitud; i++)
+    uint8_t comioFruta = PosIgual(nuevaCabeza, fruta);
+
+    uint8_t limiteChoque = longitud;
+
+    if (!comioFruta)
     {
-        if (nuevaCabeza.x == snake[i].x && nuevaCabeza.y == snake[i].y)
+        limiteChoque = longitud - 1;
+    }
+
+    for (uint8_t i = 0; i < limiteChoque; i++)
+    {
+        if (PosIgual(nuevaCabeza, snake[i]))
         {
             gameOver = 1;
             return;
         }
     }
 
-    if (nuevaCabeza.x == fruta.x && nuevaCabeza.y == fruta.y)
+    if (comioFruta)
     {
-        for (int i = longitud; i > 0; i--)
-            snake[i] = snake[i - 1];
+        if (longitud < MAX_SNAKE)
+        {
+            longitud++;
+        }
+        else
+        {
+            gameOver = 1;
+            return;
+        }
+    }
 
-        snake[0] = nuevaCabeza;
+    for (int i = longitud - 1; i > 0; i--)
+    {
+        snake[i] = snake[i - 1];
+    }
 
-        longitud++;
+    snake[0] = nuevaCabeza;
 
+    if (comioFruta)
+    {
         GenerarFruta();
     }
-    else
-    {
-        for (int i = longitud - 1; i > 0; i--)
-            snake[i] = snake[i - 1];
-
-        snake[0] = nuevaCabeza;
-
-        DibujarMapaASCII();
-    }
 }
-void DibujarMapaASCII(void)
+
+static char Celda(uint8_t x, uint8_t y)
 {
-    char mapa[MAPA_Y][MAPA_X];
-    uint8_t x,y,i;
-    uint16_t idx = 0;
-
-    for(y=0;y<MAPA_Y;y++)
+    if (snake[0].x == x && snake[0].y == y)
     {
-        for(x=0;x<MAPA_X;x++)
+        return 'O';
+    }
+
+    for (uint8_t i = 1; i < longitud; i++)
+    {
+        if (snake[i].x == x && snake[i].y == y)
         {
-            mapa[y][x]='.';
+            return 'o';
         }
     }
 
-    mapa[fruta.y][fruta.x]='*';
-
-    for(i=1;i<longitud;i++)
+    if (fruta.x == x && fruta.y == y)
     {
-        mapa[snake[i].y][snake[i].x]='O';
+        return '*';
     }
 
-    mapa[snake[0].y][snake[0].x]='@';
-
-    idx = 0;
-
-    frameBuffer[idx++] = '\r';
-    frameBuffer[idx++] = '\n';
-
-    for(y=0;y<MAPA_Y;y++)
-    {
-        for(x=0;x<MAPA_X;x++)
-        {
-            frameBuffer[idx++] = mapa[y][x];
-        }
-
-        frameBuffer[idx++] = '\r';
-        frameBuffer[idx++] = '\n';
-    }
-
-    frameBuffer[idx] = '\0';
-    frameLength = idx;
+    return '.';
 }
 
+uint16_t Snake_Render(uint8_t *buffer, uint16_t maxLen)
+{
+    uint16_t i = 0;
+
+#define PUT_CHAR(c)               \
+    do                            \
+    {                             \
+        if (i < maxLen)           \
+        {                         \
+            buffer[i++] = (c);    \
+        }                         \
+    } while (0)
+
+#define PUT_STR(s)                \
+    do                            \
+    {                             \
+        const char *p = (s);      \
+        while (*p != '\0')        \
+        {                         \
+            PUT_CHAR(*p);         \
+            p++;                  \
+        }                         \
+    } while (0)
+
+    PUT_STR("\033[H\033[2J");
+
+    PUT_STR("SNAKE LPC1769\r\n");
+    PUT_STR("O cabeza | o cuerpo | * fruta\r\n\r\n");
+
+    for (uint8_t y = 0; y < MAPA_Y; y++)
+    {
+        for (uint8_t x = 0; x < MAPA_X; x++)
+        {
+            PUT_CHAR(Celda(x, y));
+            PUT_CHAR(' ');
+        }
+
+        PUT_STR("\r\n");
+    }
+
+    if (gameOver)
+    {
+        PUT_STR("\r\nGAME OVER\r\n");
+    }
+
+#undef PUT_CHAR
+#undef PUT_STR
+
+    return i;
+}
+
+void Snake_Timer0Init(void)
+{
+    TIM_TIMERCFG_T timerCfg;
+    TIM_MATCHCFG_T matchCfg;
+
+    timerCfg.prescaleOpt = TIM_US;
+    timerCfg.prescaleValue = 1;
+
+    TIM_InitTimer(LPC_TIM0, &timerCfg);
+
+    matchCfg.channel = TIM_MATCH_0;
+    matchCfg.intEn = ENABLE;
+    matchCfg.resetEn = ENABLE;
+    matchCfg.stopEn = DISABLE;
+    matchCfg.extOpt = TIM_NOTHING;
+    matchCfg.matchValue = 250000;
+
+    TIM_ConfigMatch(LPC_TIM0, &matchCfg);
+
+    NVIC_EnableIRQ(TIMER0_IRQn);
+
+    TIM_Enable(LPC_TIM0);
+}
+
+void TIMER0_IRQHandler(void)
+{
+    if (TIM_GetIntStatus(LPC_TIM0, TIM_MR0_INT))
+    {
+        TIM_ClearIntPending(LPC_TIM0, TIM_MR0_INT);
+
+        Snake_Update();
+
+        if (!UART0_DMA_IsBusy())
+        {
+            uint16_t len = Snake_Render(frameBuffer, FRAME_BUFFER_SIZE);
+            UART0_DMA_Send(frameBuffer, len);
+        }
+    }
+}
