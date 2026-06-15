@@ -14,9 +14,10 @@
 #define MAPA_X 10
 #define MAPA_Y 10
 #define MAX_SNAKE 100
+#define FRAME_SIZE ((MAPA_X + 2) * MAPA_Y + 3)
 
-typedef struct
-{
+
+typedef struct{
     uint8_t x;
     uint8_t y;
 } POS;
@@ -31,8 +32,11 @@ extern DIR direccionActual;
 
 extern uint32_t seed;
 
+extern uint16_t frameLength;
+extern char frameBuffer[FRAME_SIZE];
+
+
 void ActualizarSnake(DIR dir);
 void Snake_Init(void);
 void GenerarFruta(void);
-
-#endif /* MAPA_H_ */
+void DibujarMapaASCII(void);

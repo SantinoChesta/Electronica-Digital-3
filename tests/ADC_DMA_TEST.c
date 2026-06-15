@@ -39,8 +39,6 @@ typedef struct
 volatile uint16_t xValue = CENTER;
 volatile uint16_t yValue = CENTER;
 
-// asd
-
 void cfgADC(void);
 void cfgDisplay(void);
 DIR getXDir(int x);
